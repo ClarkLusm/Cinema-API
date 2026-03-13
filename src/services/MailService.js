@@ -1,8 +1,8 @@
-const transporter = require("../config/Mailer");
+const transporter = require("../utils/Mailer");
 
 const sendMailService = async ({ to, subject, html }) => {
   const mailOptions = {
-    from: "hoanglb2k3@gmail.com",
+    from: process.env.SMTP_USER,
     to,
     subject,
     html,
