@@ -81,3 +81,44 @@ exports.deleteMovie = async (id) => {
 
   return result.affectedRows;
 };
+
+exports.searchMovies = async (keyword) => {
+  const query = `
+    SELECT 
+      m.*,
+      GROUP_CONCAT(g.name) AS genres
+    FROM ${Movie.table} m
+    LEFT JOIN movie_genres mg ON m.id = mg.movie_id
+    LEFT JOIN genres g ON mg.genre_id = g.id
+    WHERE LOWER(m.title) LIKE LOWER(?)
+    GROUP BY m.id
+  `;
+
+  const [rows] = await db.execute(query, [`%${keyword}%`]);
+
+  return rows.map((row) => ({
+    ...row,
+    genres: row.genres ? row.genres.split(",") : [],
+  }));
+};
+
+exports.suggestMovies = async (keyword) => {
+  const query = `
+    SELECT 
+      m.*,
+      GROUP_CONCAT(g.name) AS genres
+    FROM ${Movie.table} m
+    LEFT JOIN movie_genres mg ON m.id = mg.movie_id
+    LEFT JOIN genres g ON mg.genre_id = g.id
+    WHERE LOWER(m.title) LIKE LOWER(?)
+    GROUP BY m.id
+    LIMIT 10
+  `;
+
+  const [rows] = await db.execute(query, [`%${keyword}%`]);
+
+  return rows.map((row) => ({
+    ...row,
+    genres: row.genres ? row.genres.split(",") : [],
+  }));
+};

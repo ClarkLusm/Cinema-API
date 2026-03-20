@@ -51,3 +51,15 @@ exports.deleteMovie = async(id)=>{
     throw new Error("Movie not found");
   }
 };
+
+exports.searchMovies = async (query) => {
+  const { keyword } = query;
+
+  return await MovieRepo.searchMovies(keyword);
+};
+
+exports.suggestMovies = async (keyword) => {
+  if (!keyword || keyword.trim() === "") return [];
+
+  return await MovieRepo.suggestMovies(keyword);
+};

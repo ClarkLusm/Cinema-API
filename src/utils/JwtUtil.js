@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 exports.generateToken = (payload)=>{
 
   return jwt.sign(payload,process.env.ACTIVATION_SECRET,{
-    expiresIn:"1d"
+    expiresIn:process.env.ACTIVATION_EXPIRES
   });
 
 };
