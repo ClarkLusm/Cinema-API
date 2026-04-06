@@ -1,42 +1,150 @@
+const db = require("../config/db.config");
 const OrderRepo = require("../repositories/OrderRepository");
+const PaymentRepo = require("../repositories/PaymentRepository");
+const OfferRepo = require("../repositories/OfferRepository");
+const {
+  buildVietQrPayload,
+  generateBookingCode,
+} = require("../utils/CheckoutUtil");
+
+const extractNumericValue = (value) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const match = value.match(/-?\d+(\.\d+)?/);
+    return match ? Number(match[0]) : null;
+  }
+
+  return null;
+};
+
+const computeOfferDiscount = (offer, subtotal) => {
+  if (!offer || subtotal <= 0) {
+    return 0;
+  }
+
+  const rawDiscount = extractNumericValue(offer.discount_value);
+  const discountText = `${offer.discount_value || ""} ${offer.description || ""} ${offer.title || ""}`.toLowerCase();
+
+  if (!rawDiscount || rawDiscount <= 0) {
+    return 0;
+  }
+
+  if (discountText.includes("%") && rawDiscount <= 100) {
+    return (subtotal * rawDiscount) / 100;
+  }
+
+  return rawDiscount;
+};
 
 exports.checkout = async (data, userId) => {
-  const { showTimeId, seatIds } = data;
+  const { showTimeId, seatIds, offerId } = data;
 
   if (!showTimeId || !seatIds || seatIds.length === 0) {
     throw new Error("Missing required fields");
   }
 
-  //check ghế có đang HOLD hợp lệ không
+  const normalizedSeatIds = [...new Set(seatIds)];
   const heldSeats = await OrderRepo.getValidHeldSeats(
     userId,
     showTimeId,
-    seatIds
+    normalizedSeatIds
   );
 
-  if (heldSeats.length !== seatIds.length) {
+  if (heldSeats.length !== normalizedSeatIds.length) {
     throw new Error("Seats not valid or expired");
   }
 
-  //tính tiền (ví dụ)
-  const pricePerSeat = 80000;
-  const totalPrice = seatIds.length * pricePerSeat;
+  const showTime = await OrderRepo.getShowTimeById(showTimeId);
 
-  //tạo order
-  const orderId = await OrderRepo.createOrder(
-    userId,
-    showTimeId,
-    totalPrice
+  if (!showTime) {
+    throw new Error("Showtime not found");
+  }
+
+  const subtotal = Number(showTime.price) * normalizedSeatIds.length;
+  const appliedOffer = offerId ? await OfferRepo.getOfferById(offerId) : null;
+  const discountAmount = Math.min(
+    computeOfferDiscount(appliedOffer, subtotal),
+    subtotal
   );
+  const totalPrice = Math.max(subtotal - discountAmount, 0);
+  const connection = await db.getConnection();
 
-  //giả lập payment URL
-  const paymentUrl = `https://payment.com/pay?orderId=${orderId}`;
+  try {
+    await connection.beginTransaction();
 
-  return {
-    success: true,
-    message: "Checkout success",
-    orderId,
-    totalPrice,
-    paymentUrl,
-  };
+    const orderId = await OrderRepo.createOrder(
+      userId,
+      showTimeId,
+      totalPrice,
+      normalizedSeatIds,
+      "",
+      connection
+    );
+    const bookingCode = generateBookingCode(orderId);
+    const vietQr = buildVietQrPayload({
+      amount: totalPrice,
+      transferNote: bookingCode,
+    });
+
+    await connection.execute(
+      `
+      UPDATE orders
+      SET booking_code = ?
+      WHERE id = ?
+      `,
+      [bookingCode, orderId]
+    );
+
+    const paymentId = await PaymentRepo.createPayment(
+      orderId,
+      totalPrice,
+      "vietqr",
+      {
+        bankCode: vietQr.bankCode,
+        accountNumber: vietQr.accountNumber,
+        accountName: vietQr.accountName,
+        transferNote: vietQr.transferNote,
+        qrPayload: vietQr.qrContent,
+        qrImageUrl: vietQr.qrImageUrl,
+      },
+      connection
+    );
+
+    await connection.commit();
+
+    const expiresAt =
+      heldSeats
+        .map((seat) => seat.expires_at)
+        .filter(Boolean)
+        .sort()[0] || null;
+
+    return {
+      success: true,
+      message: "Checkout created",
+      order: {
+        id: orderId,
+        bookingCode,
+        status: "PENDING",
+        subtotal,
+        discountAmount,
+        totalPrice,
+        expiresAt,
+      },
+      payment: {
+        id: paymentId,
+        status: "PENDING",
+        provider: "vietqr",
+        amount: totalPrice,
+      },
+      vietQr,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 };

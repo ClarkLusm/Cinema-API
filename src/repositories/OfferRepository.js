@@ -22,3 +22,17 @@ exports.countOffers = async () => {
   const [rows] = await db.execute(query);
   return rows[0].total;
 };
+
+exports.getOfferById = async (offerId) => {
+  const [rows] = await db.execute(
+    `
+    SELECT *
+    FROM ${Offer.offers}
+    WHERE id = ?
+    LIMIT 1
+    `,
+    [offerId]
+  );
+
+  return rows[0];
+};

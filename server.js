@@ -8,6 +8,7 @@ const movieRoutes = require("./src/routes/MovieRouter");
 const seatRoutes = require("./src/routes/SeatBookingRouter");
 const OrderRoutes = require("./src/routes/OrderRouter");
 const PaymentRoutes = require("./src/routes/PaymentRouter");
+const TicketRoutes = require("./src/routes/TicketRouter");
 const CinemaRoutes = require("./src/routes/CinemaRouter");
 const OfferRoutes = require("./src/routes/OfferRouter");
 const { startSeatExpiryCleanup } = require("./src/services/SeatExpiryService");
@@ -28,6 +29,7 @@ app.use("/api/movies", movieRoutes);
 app.use("/api/seat", seatRoutes)
 app.use("/api/order", OrderRoutes)
 app.use("/api/payment", PaymentRoutes)
+app.use("/api/tickets", TicketRoutes)
 app.use("/api/cinemas", CinemaRoutes)
 app.use("/api/offers", OfferRoutes)
 app.get("/", (req, res) => res.send("Auth API is running"));
