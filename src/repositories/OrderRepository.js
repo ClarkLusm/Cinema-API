@@ -58,8 +58,8 @@ exports.updateSeatsToBooked = async (
   );
 };
 
-exports.updateOrderStatus = async (orderId, status) => {
-  await db.execute(
+exports.updateOrderStatus = async (orderId, status, executor = db) => {
+  await executor.execute(
     `
     UPDATE ${Order.table}
     SET status = ?

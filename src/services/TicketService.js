@@ -1,4 +1,5 @@
 const OrderRepo = require("../repositories/OrderRepository");
+const UserRepo = require("../repositories/UserRepository");
 const {
   buildTicketPayload,
   verifyTicketSignature,
@@ -26,6 +27,7 @@ exports.verifyTicket = async (ticketCode, signature) => {
   const seatIds = JSON.parse(order.seat_ids_json || "[]");
   const showTime = await OrderRepo.getShowTimeById(order.showtime_id);
   const seats = await OrderRepo.getSeatDetails(order.showtime_id, seatIds);
+  const customer = await UserRepo.getById(order.user_id);
 
   return {
     success: true,
@@ -37,6 +39,7 @@ exports.verifyTicket = async (ticketCode, signature) => {
       userId: order.user_id,
       showTime,
       seats,
+      customer,
     }),
   };
 };

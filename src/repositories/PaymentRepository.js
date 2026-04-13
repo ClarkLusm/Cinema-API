@@ -1,39 +1,14 @@
 const db = require("../config/db.config");
 const Payment = require("../models/PaymentModel");
 
-exports.createPayment = async (
-  orderId,
-  amount,
-  provider,
-  metadata = {},
-  executor = db
-) => {
-  const {
-    bankCode = null,
-    accountNumber = null,
-    accountName = null,
-    transferNote = null,
-    qrPayload = null,
-    qrImageUrl = null,
-  } = metadata;
-
+exports.createPayment = async (orderId, amount, provider, executor = db) => {
   const [result] = await executor.execute(
     `
     INSERT INTO ${Payment.table}
-    (order_id, amount, provider, status, bank_code, account_number, account_name, transfer_note, qr_payload, qr_image_url)
-    VALUES (?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?)
+    (order_id, amount, currency, provider, status)
+    VALUES (?, ?, 'VND', ?, 'PENDING')
     `,
-    [
-      orderId,
-      amount,
-      provider,
-      bankCode,
-      accountNumber,
-      accountName,
-      transferNote,
-      qrPayload,
-      qrImageUrl,
-    ]
+    [orderId, amount, provider]
   );
 
   return result.insertId;
@@ -43,8 +18,6 @@ exports.updatePaymentStatus = async (
   paymentId,
   status,
   transactionCode,
-  paidAmount = null,
-  webhookPayload = null,
   executor = db
 ) => {
   await executor.execute(
@@ -52,12 +25,10 @@ exports.updatePaymentStatus = async (
     UPDATE ${Payment.table}
     SET status = ?,
         transaction_code = ?,
-        paid_amount = COALESCE(?, paid_amount),
-        webhook_payload = COALESCE(?, webhook_payload),
         paid_at = CASE WHEN ? = 'SUCCESS' THEN NOW() ELSE paid_at END
     WHERE id = ?
     `,
-    [status, transactionCode, paidAmount, webhookPayload, status, paymentId]
+    [status, transactionCode, status, paymentId]
   );
 };
 
@@ -69,7 +40,6 @@ exports.getPaymentByOrderId = async (orderId) => {
     WHERE order_id = ?
     ORDER BY
       CASE WHEN status = 'SUCCESS' THEN 0 ELSE 1 END,
-      CASE WHEN qr_image_url IS NOT NULL OR bank_code IS NOT NULL OR account_number IS NOT NULL THEN 0 ELSE 1 END,
       id ASC
     LIMIT 1
     `,
@@ -87,7 +57,6 @@ exports.getPendingPaymentByOrderId = async (orderId) => {
     WHERE order_id = ?
       AND status = 'PENDING'
     ORDER BY
-      CASE WHEN qr_image_url IS NOT NULL OR bank_code IS NOT NULL OR account_number IS NOT NULL THEN 0 ELSE 1 END,
       id ASC
     LIMIT 1
     `,
@@ -101,12 +70,12 @@ exports.updatePaymentMetadata = async (paymentId, metadata = {}, executor = db) 
   const {
     amount = null,
     provider = null,
-    bankCode = null,
-    accountNumber = null,
-    accountName = null,
-    transferNote = null,
-    qrPayload = null,
-    qrImageUrl = null,
+    currency = null,
+    status = null,
+    merchTxnRef = null,
+    gatewayTransactionNo = null,
+    responseCode = null,
+    message = null,
   } = metadata;
 
   await executor.execute(
@@ -114,23 +83,23 @@ exports.updatePaymentMetadata = async (paymentId, metadata = {}, executor = db) 
     UPDATE ${Payment.table}
     SET amount = COALESCE(?, amount),
         provider = COALESCE(?, provider),
-        bank_code = COALESCE(?, bank_code),
-        account_number = COALESCE(?, account_number),
-        account_name = COALESCE(?, account_name),
-        transfer_note = COALESCE(?, transfer_note),
-        qr_payload = COALESCE(?, qr_payload),
-        qr_image_url = COALESCE(?, qr_image_url)
+        currency = COALESCE(?, currency),
+        status = COALESCE(?, status),
+        merch_txn_ref = COALESCE(?, merch_txn_ref),
+        gateway_transaction_no = COALESCE(?, gateway_transaction_no),
+        response_code = COALESCE(?, response_code),
+        message = COALESCE(?, message)
     WHERE id = ?
     `,
     [
       amount,
       provider,
-      bankCode,
-      accountNumber,
-      accountName,
-      transferNote,
-      qrPayload,
-      qrImageUrl,
+      currency,
+      status,
+      merchTxnRef,
+      gatewayTransactionNo,
+      responseCode,
+      message,
       paymentId,
     ]
   );
@@ -150,34 +119,15 @@ exports.getPaymentById = async (paymentId) => {
   return rows[0];
 };
 
-exports.findPendingPaymentForWebhook = async ({
-  paymentId,
-  orderId,
-  transferNote,
-}) => {
-  if (paymentId) {
-    return exports.getPaymentById(paymentId);
-  }
-
-  if (orderId) {
-    return exports.getPendingPaymentByOrderId(orderId);
-  }
-
-  if (!transferNote) {
-    return null;
-  }
-
+exports.getPaymentByMerchTxnRef = async (merchTxnRef) => {
   const [rows] = await db.execute(
     `
     SELECT *
     FROM ${Payment.table}
-    WHERE provider = 'vietqr'
-    AND status = 'PENDING'
-    AND ? LIKE CONCAT('%', REPLACE(UPPER(transfer_note), ' ', ''), '%')
-    ORDER BY id ASC
+    WHERE merch_txn_ref = ?
     LIMIT 1
     `,
-    [transferNote]
+    [merchTxnRef]
   );
 
   return rows[0];

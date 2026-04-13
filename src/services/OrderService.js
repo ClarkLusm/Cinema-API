@@ -2,10 +2,7 @@ const db = require("../config/db.config");
 const OrderRepo = require("../repositories/OrderRepository");
 const PaymentRepo = require("../repositories/PaymentRepository");
 const OfferRepo = require("../repositories/OfferRepository");
-const {
-  buildVietQrPayload,
-  generateBookingCode,
-} = require("../utils/CheckoutUtil");
+const { generateBookingCode } = require("../utils/CheckoutUtil");
 
 const extractNumericValue = (value) => {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -84,10 +81,6 @@ exports.checkout = async (data, userId) => {
       connection
     );
     const bookingCode = generateBookingCode(orderId);
-    const vietQr = buildVietQrPayload({
-      amount: totalPrice,
-      transferNote: bookingCode,
-    });
 
     await connection.execute(
       `
@@ -101,15 +94,7 @@ exports.checkout = async (data, userId) => {
     const paymentId = await PaymentRepo.createPayment(
       orderId,
       totalPrice,
-      "vietqr",
-      {
-        bankCode: vietQr.bankCode,
-        accountNumber: vietQr.accountNumber,
-        accountName: vietQr.accountName,
-        transferNote: vietQr.transferNote,
-        qrPayload: vietQr.qrContent,
-        qrImageUrl: vietQr.qrImageUrl,
-      },
+      "onepay",
       connection
     );
 
@@ -136,10 +121,10 @@ exports.checkout = async (data, userId) => {
       payment: {
         id: paymentId,
         status: "PENDING",
-        provider: "vietqr",
+        provider: "onepay",
         amount: totalPrice,
       },
-      vietQr,
+      paymentUrl: null,
     };
   } catch (error) {
     await connection.rollback();

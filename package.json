@@ -5,7 +5,17 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "db:create": "node scripts/createDatabase.js",
+    "db:migrate": "node scripts/runSequelizeCli.js db:migrate",
+    "db:seed": "node scripts/runSequelizeCli.js db:seed:all",
+    "db:setup": "node scripts/setupDatabase.js",
+    "db:reset": "node scripts/setupDatabase.js --reset",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f mysql",
+    "dev:setup": "npm run docker:up && npm run db:setup",
+    "dev:full": "npm run dev:setup && npm run dev"
   },
   "keywords": [],
   "author": "",
