@@ -1,0 +1,9 @@
+node_modules
+.env
+.data
+db_cinema.sql
+docker-compose.yml
+scripts
+seed
+migrations
+RUN_WITHOUT_XAMPP.md

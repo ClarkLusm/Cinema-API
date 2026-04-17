@@ -6,8 +6,7 @@ const crypto = require("crypto");
 
 const UserRepo = require("../repositories/UserRepository");
 const { sendMailService, mailTemplate } = require("./MailService");
-
-const FRONTEND_URL = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "");
+const { frontendUrl } = require("../config/runtimeConfig");
 
 exports.register = async ({ fullname, email, password }) => {
   const existing = await UserRepo.getByEmail(email);
@@ -33,7 +32,7 @@ exports.register = async ({ fullname, email, password }) => {
     expiresIn: process.env.ACTIVATION_EXPIRES,
   });
 
-  const activeLink = `${FRONTEND_URL}/activate-account?token=${token}`;
+  const activeLink = `${frontendUrl}/activate-account?token=${token}`;
   try {
     await sendMailService({
       to: email,
@@ -89,7 +88,7 @@ exports.forgotPassword = async (email) => {
 
   const resetToken = crypto.createHash("sha256").update(token).digest("hex");
 
-  const activeLink = `${FRONTEND_URL}/reset-password?id=${user.id}&token=${resetToken}`;
+  const activeLink = `${frontendUrl}/reset-password?id=${user.id}&token=${resetToken}`;
 
   await sendMailService({
     to: email,
@@ -143,17 +142,19 @@ exports.resendActivation = async (email) => {
     email: user.email,
   };
 
-  const token = jwt.sign({ payload }, process.env.ACTIVATION_SECRET, {
-    expiresIn: process.env.ACTIVATION_EXPRIES,
+  const token = jwt.sign(payload, process.env.ACTIVATION_SECRET, {
+    expiresIn: process.env.ACTIVATION_EXPIRES,
   });
 
-  const activeLink = `${FRONTEND_URL}/activate-account?token=${token}`;
+  const activeLink = `${frontendUrl}/activate-account?token=${token}`;
 
   await sendMailService({
     to: email,
     subject: "Activate Account",
     html: mailTemplate("Click", activeLink, "Activate Account"),
   });
+
+  return token;
 };
 
 exports.resetPassword = async ({ id, token, password }) => {

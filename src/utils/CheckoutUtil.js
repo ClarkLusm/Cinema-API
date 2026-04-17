@@ -1,9 +1,9 @@
 const crypto = require("crypto");
+const { backendPublicUrl } = require("../config/runtimeConfig");
 
 const DEFAULT_TICKET_QR_SECRET =
   process.env.TICKET_QR_SECRET || "cinema-ticket-secret";
-const DEFAULT_BACKEND_PUBLIC_URL =
-  process.env.BACKEND_PUBLIC_URL || "http://localhost:5000";
+const DEFAULT_BACKEND_PUBLIC_URL = backendPublicUrl;
 
 exports.generateBookingCode = (orderId) =>
   `BOOKING${String(orderId).padStart(6, "0")}`;

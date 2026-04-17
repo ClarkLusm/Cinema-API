@@ -14,6 +14,26 @@ exports.getProfile = async (id) => {
   return safeUser;
 };
 
+exports.updateProfile = async (id, payload) => {
+  const user = await UserRepo.getById(id);
+
+  if (!user) {
+    throw new Error("USER_NOT_FOUND");
+  }
+
+  const profileData = {
+    fullname: payload.fullname ?? user.fullname ?? null,
+    age: payload.age ?? user.age ?? null,
+    phone: payload.phone ?? user.phone ?? null,
+    avatar: payload.avatar ?? user.avatar ?? null,
+    address: payload.address ?? user.address ?? null,
+  };
+
+  await UserRepo.updateProfile(id, profileData);
+
+  return exports.getProfile(id);
+};
+
 exports.getListCustomer = async (query) => {
 
   const page = parseInt(query.page) || 1;

@@ -9,6 +9,7 @@ const {
   buildTicketPayload,
   generateTicketCode,
 } = require("../utils/CheckoutUtil");
+const { frontendUrl, backendPublicUrl } = require("../config/runtimeConfig");
 
 const ONEPAY_PAYMENT_URL =
   process.env.ONEPAY_PAYMENT_URL || "https://mtf.onepay.vn/paygate/vpcpay.op";
@@ -16,10 +17,8 @@ const ONEPAY_MERCHANT = process.env.ONEPAY_MERCHANT || "TESTONEPAY";
 const ONEPAY_ACCESS_CODE = process.env.ONEPAY_ACCESS_CODE || "6BEB2546";
 const ONEPAY_SECURE_SECRET =
   process.env.ONEPAY_SECURE_SECRET || "6D0870CDE5D40475";
-const DEFAULT_FRONTEND_URL =
-  (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "");
-const DEFAULT_BACKEND_URL =
-  (process.env.BACKEND_PUBLIC_URL || "http://localhost:5000").replace(/\/+$/, "");
+const DEFAULT_FRONTEND_URL = frontendUrl;
+const DEFAULT_BACKEND_URL = backendPublicUrl;
 const ONEPAY_RETURN_PATH = "/api/onepay/return";
 const ONEPAY_IPN_PATH = "/api/onepay/ipn";
 

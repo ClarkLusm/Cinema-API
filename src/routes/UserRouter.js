@@ -3,6 +3,7 @@ const router = express.Router();
 const userRouter = require('../controllers/UserController');
 
 router.get('/profile/:id', userRouter.profile);
+router.put('/profile/:id', userRouter.updateProfile);
 router.get('/list-customer', userRouter.listCustomer);
 router.put("/change-password", userRouter.changePassword);
 router.post("/send-mail", userRouter.sendMail);

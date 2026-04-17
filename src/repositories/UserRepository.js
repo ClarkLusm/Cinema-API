@@ -35,6 +35,17 @@ exports.updatePassword = async (id, password) => {
   ]);
 };
 
+exports.updateProfile = async (id, { fullname, age, phone, avatar, address }) => {
+  const [result] = await db.execute(
+    `UPDATE ${User.table}
+     SET fullname = ?, age = ?, phone = ?, avatar = ?, address = ?
+     WHERE id = ?`,
+    [fullname, age, phone, avatar, address, id],
+  );
+
+  return result.affectedRows;
+};
+
 exports.saveResetToken = async (userId, token) => {
   const createdAt = new Date();
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);

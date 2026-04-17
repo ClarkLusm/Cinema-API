@@ -11,6 +11,7 @@ router.post("/activate-account", AuthRouter.activateAccount);
 router.post("/resend-activation", AuthRouter.resendActivation);
 router.post("/forgot-password", AuthRouter.forgotPassword);
 router.post("/reset-password", AuthRouter.resetPassword);
+router.put("/profile/:id", AuthRouter.updateProfile);
 
 
 module.exports = router;

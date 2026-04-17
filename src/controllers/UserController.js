@@ -22,6 +22,24 @@ exports.profile = async (req, res) => {
   }
 };
 
+exports.updateProfile = async (req, res) => {
+  try {
+    const user = await UserService.updateProfile(req.params.id, req.body);
+
+    res.json({
+      success: true,
+      message: "Update profile successfully",
+      data: user,
+    });
+  } catch (err) {
+    const status = err.message === "USER_NOT_FOUND" ? 404 : 400;
+
+    res.status(status).json({
+      message: err.message,
+    });
+  }
+};
+
 exports.listCustomer = async (req, res) => {
 
   try {

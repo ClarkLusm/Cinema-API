@@ -1,4 +1,5 @@
 const OnePayService = require("../services/OnePayService");
+const { frontendUrl } = require("../config/runtimeConfig");
 
 exports.createCheckout = async (req, res, next) => {
   try {
@@ -32,7 +33,7 @@ exports.handleReturn = async (req, res, next) => {
     const redirectTarget =
       typeof req.query.redirect === "string" && req.query.redirect.trim()
         ? req.query.redirect
-        : `${process.env.FRONTEND_URL || "http://localhost:3000"}/payment/onepay/result`;
+        : `${frontendUrl}/payment/onepay/result`;
 
     const payload = await OnePayService.handleGatewayReturn(req.query);
     const transaction = payload.transaction

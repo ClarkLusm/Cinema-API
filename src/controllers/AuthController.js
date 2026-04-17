@@ -1,6 +1,7 @@
 "use strict";
 
 const AuthService = require("../services/AuthService");
+const UserService = require("../services/UserService");
 const UserRepo = require("../repositories/UserRepository");
 
 exports.register = async (req, res) => {
@@ -160,5 +161,29 @@ exports.resetPassword = async (req, res) => {
     }
 
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const user = await UserService.updateProfile(req.params.id, req.body);
+
+    return res.status(200).json({
+      success: true,
+      message: "Update profile successfully",
+      data: user,
+    });
+  } catch (err) {
+    console.error(err);
+
+    if (err.message === "USER_NOT_FOUND") {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    return res.status(400).json({
+      message: err.message,
+    });
   }
 };
