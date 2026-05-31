@@ -1,0 +1,89 @@
+name: Deploy Node Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate .env from ENV variable 
+        run: |
+          echo "${{ vars.ENV }}" > .env
+      
+      - name: Build app
+        run: npm run build
+
+      - name: Prepare deploy package
+        run: |
+          rm -rf deploy
+          mkdir deploy
+
+          cp package.json deploy/
+          cp package-lock.json deploy/
+          cp .env deploy/
+
+          # Build output
+          cp -r dist deploy/
+
+          # Sequelize files
+          cp -r migrations deploy/ || true
+          cp -r seed deploy/ || true
+          cp -r scripts deploy/ || true
+          cp .sequelizerc deploy/ || true
+          cp db_cinema.sql deploy/ || true
+          mkdir -p deploy/src
+          mkdir -p deploy/src/config
+          mkdir -p deploy/src/utils
+          cp src/config/database.js deploy/src/config/database.js
+          cp src/utils/sqlDumpLoader.js deploy/src/utils/sqlDumpLoader.js
+
+      - name: Upload build to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "deploy/*"
+          target: "/var/www/cinema"
+          strip_components: 1
+
+      - name: Install deps, migrate and restart
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+
+            cd /var/www/cinema
+
+            echo "Installing production dependencies..."
+            npm ci --omit=dev
+
+            echo "Running sequelize migrations..."
+            npm run db:migrate
+
+            echo "Restarting PM2 app..."
+            pm2 restart cinema-api || pm2 start dist/index.js --name cinema-api
+
+            pm2 save
+
+            echo "Deployment completed!"
